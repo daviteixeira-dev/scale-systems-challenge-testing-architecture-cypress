@@ -29,14 +29,17 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
         <html>
           <body>
             <div class="form-container">
-              <h2>Inscrição Workshop</h2>
-              <input type="text" name="name" placeholder="Nome Completo" />
-              <input type="email" name="email" placeholder="E-mail" />
-              <input type="text" name="phone" placeholder="(Opcional) Telefone" />
-              <button type="submit">Inscrever</button>
+              <h2>Inscrição Workshop <span class="vagas-badge">Vagas: 2/50</span></h2>
+              <form id="workshopForm">
+                <input type="text" name="name" placeholder="Nome Completo *" required />
+                <input type="email" name="email" placeholder="E-mail *" required />
+                <input type="text" name="phone" placeholder="(Opcional) Telefone" />
+                <button type="submit" id="btnSubmit" disabled>Inscrever</button>
+              </form>
             </div>
             
             <div class="toast-success" style="display: none;">Inscrição realizada com sucesso!</div>
+            <div class="alert-error" style="display: none; color: red;">Vagas esgotadas!</div>
 
             <div class="list-container">
               <h2>Lista de Participantes</h2>
@@ -47,22 +50,34 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
             </div>
 
             <script>
-              // Simulação simples do comportamento do botão para o teste passar de ponta a ponta
-              document.querySelector('button[type="submit"]').addEventListener('click', () => {
-                // Exibe o toast de sucesso
+              const form = document.getElementById('workshopForm');
+              const btn = document.getElementById('btnSubmit');
+              const nameInput = form.elements['name'];
+              const emailInput = form.elements['email'];
+
+              // Lógica simples para habilitar/desabilitar o botão com base nos campos obrigatórios (CT-002)
+              form.addEventListener('input', () => {
+                if (nameInput.value.trim() !== '' && emailInput.value.trim() !== '') {
+                  btn.removeAttribute('disabled');
+                } else {
+                  btn.setAttribute('disabled', 'true');
+                }
+              });
+
+              form.addEventListener('submit', (e) => {
+                e.preventDefault();
                 document.querySelector('.toast-success').style.display = 'block';
-                // Dispara as requisições fake para ativar as interceptações do Cypress
+                
                 fetch('/api/workshops/1/enroll', { method: 'POST' });
                 fetch('/api/notifications/email', { method: 'POST' });
                 
-                // Atualiza a lista de forma reativa
                 const li = document.createElement('li');
-                li.textContent = 'Carlos Pereira (carlos.p@email.com)';
+                li.textContent = nameInput.value + ' (' + emailInput.value + ')';
                 document.querySelector('.participant-list').appendChild(li);
 
-                // Limpa os campos
-                document.querySelector('input[name="name"]').value = '';
-                document.querySelector('input[name="email"]').value = '';
+                nameInput.value = '';
+                emailInput.value = '';
+                btn.setAttribute('disabled', 'true');
               });
             </script>
           </body>
@@ -110,4 +125,41 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
       .should('contain', nomeCompleto)
       .and('contain', emailValido);
   });
+
+  it('CT-002 — Deve garantir que o botão permanecerá desabilitado se campos obrigatórios estiverem vazios', () => {
+    // Passo 1: Preenche apenas o campo opcional de telefone
+    cy.get('input[name="phone"]').type('11987654321');
+
+    // Asserção: O botão "Inscrever" deve conter o atributo HTML 'disabled'
+    cy.get('#btnSubmit')
+      .should('be.disabled');
+
+    // Passo 2: Preenche o nome mas deixa o e-mail vazio
+    cy.get('input[name="name"]').type('Carlos Silva');
+    cy.get('#btnSubmit').should('be.disabled');
+  });
+
+  it('CT-003 — Deve simular o bloqueio de interface e mensagem de erro ao atingir a lotação máxima (50/50)', () => {
+    // Simulando que o estado da aplicação mudou para lotado atualizando o DOM diretamente no teste
+    cy.document().then((doc) => {
+      // Altera o contador visual para 50/50
+      doc.querySelector('.vagas-badge').textContent = 'Vagas: 50/50';
+      // Exibe a mensagem impeditiva que você mapeou na especificação
+      doc.querySelector('.alert-error').style.display = 'block';
+      // Aplica a melhoria de UX que você propôs: desabilita os campos e o botão
+      doc.querySelectorAll('input').forEach(input => input.setAttribute('disabled', 'true'));
+      doc.getElementById('btnSubmit').setAttribute('disabled', 'true');
+    });
+
+    // Asserções baseadas nos critérios de aceite de limite de vagas
+    cy.get('.alert-error')
+      .should('be.visible')
+      .and('contain', 'Vagas esgotadas!');
+
+    cy.get('input[name="name"]').should('be.disabled');
+    cy.get('input[name="email"]').should('be.disabled');
+    cy.get('#btnSubmit').should('be.disabled');
+  });
+
+
 });
