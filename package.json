@@ -1,0 +1,26 @@
+{
+  "name": "scale-systems-challenge-testing-architecture-cypress",
+  "version": "1.0.0",
+  "description": "Este repositório contém a solução completa para o desafio técnico de automação e engenharia de qualidade da **X2 Eventos**. O projeto consiste na validação, análise de negócio e estruturação da suíte de testes para a nova plataforma interna de gerenciamento automatizado de workshops.",
+  "main": "cypress.config.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daviteixeira-dev/scale-systems-challenge-testing-architecture-cypress.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/daviteixeira-dev/scale-systems-challenge-testing-architecture-cypress/issues"
+  },
+  "homepage": "https://github.com/daviteixeira-dev/scale-systems-challenge-testing-architecture-cypress#readme",
+  "devDependencies": {
+    "cypress": "^15.17.0"
+  }
+}
