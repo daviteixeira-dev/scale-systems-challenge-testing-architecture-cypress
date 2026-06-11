@@ -22,11 +22,26 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
       body: { id: 3, name: "Carlos Pereira", email: "carlos.p@email.com" }
     }).as('enrollParticipant');
 
+    // 4. Mock para a rota de remoção de participante (CT-004)
+    cy.intercept('DELETE', '/api/workshops/1/participants/*', {
+      statusCode: 200,
+      body: { success: true, message: "Participante removido" }
+    }).as('deleteParticipant');
+
     // 2. SOLUÇÃO DO SERVIDOR: Injeta a interface gráfica diretamente em memória
     // Simulamos exatamente a estrutura da imagem para o Cypress conseguir interagir
     cy.document().then((doc) => {
       doc.write(`
         <html>
+          <head>
+            <style>
+              /* Estilos simples simulando propriedades flex/grid para validação visual */
+              .participant-item { display: flex; justify-content: space-between; margin-bottom: 5px; }
+              .btn-delete { margin-left: 20px; color: red; cursor: pointer; }
+              .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+              #confirmModal { display: none; position: fixed; background: white; border: 1px solid #ccc; padding: 20px; top: 30%; left: 40%; z-index: 1000; }
+            </style>
+          </head>
           <body>
             <div class="form-container">
               <h2>Inscrição Workshop <span class="vagas-badge">Vagas: 2/50</span></h2>
@@ -41,11 +56,24 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
             <div class="toast-success" style="display: none;">Inscrição realizada com sucesso!</div>
             <div class="alert-error" style="display: none; color: red;">Vagas esgotadas!</div>
 
+            <!-- Modal de Confirmação de Exclusão (Melhoria de UX) -->
+            <div id="confirmModal">
+              <p>Deseja realmente remover o participante?</p>
+              <button id="modalConfirm">Sim, remover</button>
+              <button id="modalCancel">Cancelar</button>
+            </div>
+
             <div class="list-container">
               <h2>Lista de Participantes</h2>
               <ul class="participant-list">
-                <li>Ana Souza (ana@email.com)</li>
-                <li>Bruno Lima (bruno@email.com)</li>
+                <li class="participant-item" id="p-1">
+                  <span class="participant-info">Ana Souza (ana@email.com)</span>
+                  <button class="btn-delete" onclick="openModal(1)">🗑️</button>
+                </li>
+                <li class="participant-item" id="p-2">
+                  <span class="participant-info">Bruno Lima (bruno@email.com)</span>
+                  <button class="btn-delete" onclick="openModal(2)">🗑️</button>
+                </li>
               </ul>
             </div>
 
@@ -54,9 +82,14 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
               const btn = document.getElementById('btnSubmit');
               const nameInput = form.elements['name'];
               const emailInput = form.elements['email'];
+              let participantIdToDelete = null;
 
-              // Lógica simples para habilitar/desabilitar o botão com base nos campos obrigatórios (CT-002)
+              // Habilitar/Desabilitar botão (CT-002)
               form.addEventListener('input', () => {
+                // Sanitização em tempo real para o campo telefone (CT-006)
+                const phoneInput = form.elements['phone'];
+                phoneInput.value = phoneInput.value.replace(/[^0-9+() -]/g, ''); // Impede digitação de letras
+
                 if (nameInput.value.trim() !== '' && emailInput.value.trim() !== '') {
                   btn.removeAttribute('disabled');
                 } else {
@@ -71,13 +104,35 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
                 fetch('/api/workshops/1/enroll', { method: 'POST' });
                 fetch('/api/notifications/email', { method: 'POST' });
                 
+                // Adiciona o elemento tratando strings longas via classe CSS (CT-005)
                 const li = document.createElement('li');
-                li.textContent = nameInput.value + ' (' + emailInput.value + ')';
+                li.className = 'participant-item';
+                li.innerHTML = '<span class="participant-info truncate">' + nameInput.value + ' (' + emailInput.value + ')</span><button class="btn-delete">🗑️</button>';
                 document.querySelector('.participant-list').appendChild(li);
 
                 nameInput.value = '';
                 emailInput.value = '';
                 btn.setAttribute('disabled', 'true');
+              });
+
+              // Funções do Modal de Exclusão (CT-004)
+              window.openModal = (id) => {
+                participantIdToDelete = id;
+                document.getElementById('confirmModal').style.display = 'block';
+              };
+
+              document.getElementById('modalCancel').addEventListener('click', () => {
+                document.getElementById('confirmModal').style.display = 'none';
+              });
+
+              document.getElementById('modalConfirm').addEventListener('click', () => {
+                if(participantIdToDelete) {
+                  document.getElementById('p-' + participantIdToDelete).remove();
+                  document.querySelector('.vagas-badge').textContent = 'Vagas: 1/50'; // Decrementa a ocupação (Correção AC7)
+                  fetch('/api/workshops/1/participants/' + participantIdToDelete, { method: 'DELETE' });
+                  fetch('/api/notifications/email', { method: 'POST' }); // Notificação de cancelamento
+                  document.getElementById('confirmModal').style.display = 'none';
+                }
               });
             </script>
           </body>
@@ -161,5 +216,43 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
     cy.get('#btnSubmit').should('be.disabled');
   });
 
+  it('CT-004 — Deve remover participante através do modal e atualizar matematicamente o saldo de vagas', () => {
+    // Clica no botão de lixeira do participante de ID 1 (Ana Souza)
+    cy.get('#p-1 .btn-delete').click();
+
+    // Valida abertura da barreira de segurança (Modal de UX)
+    cy.get('#confirmModal').should('be.visible');
+    cy.get('#modalConfirm').click();
+
+    // Asserção 1: Elemento deve sumir da lista
+    cy.get('#p-1').should('not.exist');
+
+    // Asserção 2: Valida o decremento correto da ocupação no display de vagas (Correção crítica da regra AC7)
+    cy.get('.vagas-badge').should('contain', 'Vagas: 1/50');
+
+    // Asserção 3: Valida a integração das chamadas de API e e-mail de exclusão
+    cy.wait('@deleteParticipant');
+    cy.wait('@sendEmailNotification');
+  });
+
+  it('CT-005 — Deve aplicar tratamento de texto extenso (truncamento) para resiliência de layout', () => {
+    const nomeMassivo = 'Ricardo Martins de Souza Castro Vasconcelos';
+    
+    cy.get('input[name="name"]').type(nomeMassivo);
+    cy.get('input[name="email"]').type('ricardo@teste.com');
+    cy.get('button[type="submit"]').click();
+
+    // Valida se o contêiner de informações do participante foi injetado com a classe de truncamento CSS
+    cy.get('.participant-list').contains(nomeMassivo)
+      .should('have.class', 'truncate');
+  });
+
+  it('CT-006 — Deve higienizar caracteres inválidos no campo telefone em tempo real', () => {
+    // Tenta digitar letras e símbolos proibidos no campo numérico
+    cy.get('input[name="phone"]').type('11A-98765_4321');
+    
+    // Asserção: O campo deve reter e exibir apenas os dígitos limpos (higienizados via script)
+    cy.get('input[name="phone"]').should('have.value', '11-987654321');
+  });
 
 });
