@@ -43,3 +43,61 @@ Toda a análise de qualidade, especificação técnica e mapeamento de riscos fo
 4. 🐛 **[Relatório de Bugs & Insights Arquiteturais](https://github.com/daviteixeira-dev/scale-systems-challenge-testing-architecture-cypress/blob/main/docs/specs/bug_report_insights.md)**: Registro formal de defeitos críticos encontrados (incluindo o erro de lógica inversa do AC7 e inconsistência visual do contador) com sugestões de engenharia (*Debounce* e *Optimistic Updates*).
 
 *O documento original com as diretrizes do processo seletivo encontra-se arquivado localmente em: [Processo Seletivo QA - Desafio Técnico.pdf](https://github.com/daviteixeira-dev/scale-systems-challenge-testing-architecture-cypress/blob/main/docs/Processo%20seletivo%20QA%20-%20Desafio%20T%C3%A9cnico.pdf).*
+
+---
+
+## 🛠️ Guia de Configuração e Execução do Projeto
+
+Siga o passo a passo abaixo para preparar o ambiente e rodar a suíte de testes automatizados localmente em qualquer computador.
+
+### 1. Pré-requisitos (Instalação do Node.js)
+O Cypress necessita do ambiente **Node.js** para gerenciar dependências e executar.
+* Abra o seu terminal e verifique se já possui o Node instalado digitando: `node -v`.
+* Caso o comando não seja reconhecido, faça o download da versão estável **LTS** no site oficial [nodejs.org](https://nodejs.org) e instale-a seguindo o instalador padrão. Reinicie o seu terminal após a conclusão.
+
+### 2. Clonando o Repositório
+No terminal, faça o clone deste projeto para a sua máquina local e acesse a pasta raiz:
+```bash
+git clone https://github.com/daviteixeira-dev/scale-systems-challenge-testing-architecture-cypress.git
+cd scale-systems-challenge-testing-architecture-cypress
+```
+
+### 3. Instalando as Dependências
+Com o ambiente acessado, baixe o framework Cypress e todas as configurações necessárias através do gerenciador de pacotes padrão (NPM):
+```bash
+npm install
+```
+
+### 4. Executando a Suíte de Testes Automatizados
+
+Como a aplicação real ainda não possui um servidor frontend ativo, os testes foram desenvolvidos utilizando uma estratégia arquitetural avançada de **Injeção de Interface em Memória Dinâmica**. Desse modo, o Cypress renderiza o escopo visual e intercepta as chamadas HTTP (Mocks/Spy) sem a necessidade de servidores web adicionais.
+
+Você pode executar os testes de duas maneiras:
+
+#### Opção A: Interface Gráfica Interativa (Recomendado)
+Para abrir o painel interativo do Cypress e acompanhar as asserções visualmente:
+```bash
+npx cypress open
+```
+1. No painel que se abrirá, clique em **E2E Testing**.
+2. Selecione o navegador de sua preferência (ex: Chrome ou Electron) e clique em **Start E2E Testing**.
+3. Na lista de especificações, clique sobre o arquivo **`cadastro_workshop.cy.js`** para assistir à execução dos 7 cenários em tempo real.
+
+#### Opção B: Modo Headless (Execução rápida em terminal)
+Para rodar os testes direto no terminal (ideal para esteiras de Integração Contínua / CI/CD):
+```bash
+npx cypress run
+```
+
+## 🏁 Conclusão & Práticas de Engenharia Aplicadas
+
+Este projeto foi desenvolvido aplicando metodologias modernas de Engenharia de Qualidade e Testes de Software Orientados ao Contexto, indo muito além da escrita mecânica de scripts de automação.
+
+### 💡 Principais Diferenciais Desta Entrega:
+*   **Abordagem Shift-Left Testing:** Análise estática dos requisitos realizada antes da codificação, permitindo identificar e documentar falhas lógicas críticas (como a inversão da regra do AC7 e ambiguidade no display de vagas) de forma proativa.
+*   **Estratégia de UI In-Memory TDD:** Arquitetura de automação inovadora desenvolvida sem dependência de um servidor frontend ativo. A injeção dinâmica de componentes HTML em memória simula perfeitamente o comportamento reativo da aplicação real.
+*   **Isolamento Absoluto de Testes (Mocking/Spying):** interceptação de chamadas de API (`cy.intercept`) e implementação de *Window Spies* para validar a integridade de payloads enviados a microsserviços externos de e-mail de forma confiável e resiliente.
+*   **Padrões Profissionais de Mercado:** Toda a documentação estratégica foi estruturada em total conformidade com as diretrizes internacionais da norma **ISO/IEC/IEEE 29119-3**, utilizando histórico de versionamento com **Commits Semânticos**.
+
+---
+*Desafio concluído com sucesso e pronto para avaliação. Sinta-se à vontade para explorar os artefatos técnicos na pasta `/docs` e executar a suíte Cypress localmente!*
