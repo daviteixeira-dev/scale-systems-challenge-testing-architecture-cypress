@@ -35,7 +35,6 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
         <html>
           <head>
             <style>
-              /* Estilos simples simulando propriedades flex/grid para validação visual */
               .participant-item { display: flex; justify-content: space-between; margin-bottom: 5px; }
               .btn-delete { margin-left: 20px; color: red; cursor: pointer; }
               .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
@@ -56,7 +55,6 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
             <div class="toast-success" style="display: none;">Inscrição realizada com sucesso!</div>
             <div class="alert-error" style="display: none; color: red;">Vagas esgotadas!</div>
 
-            <!-- Modal de Confirmação de Exclusão (Melhoria de UX) -->
             <div id="confirmModal">
               <p>Deseja realmente remover o participante?</p>
               <button id="modalConfirm">Sim, remover</button>
@@ -84,11 +82,12 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
               const emailInput = form.elements['email'];
               let participantIdToDelete = null;
 
-              // Habilitar/Desabilitar botão (CT-002)
+              // Inicializa um objeto espião global na janela para capturar os dados do e-mail de forma confiável
+              window.lastEmailSent = null;
+
               form.addEventListener('input', () => {
-                // Sanitização em tempo real para o campo telefone (CT-006)
                 const phoneInput = form.elements['phone'];
-                phoneInput.value = phoneInput.value.replace(/[^0-9+() -]/g, ''); // Impede digitação de letras
+                phoneInput.value = phoneInput.value.replace(/[^0-9+() -]/g, ''); 
 
                 if (nameInput.value.trim() !== '' && emailInput.value.trim() !== '') {
                   btn.removeAttribute('disabled');
@@ -102,9 +101,11 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
                 document.querySelector('.toast-success').style.display = 'block';
                 
                 fetch('/api/workshops/1/enroll', { method: 'POST' });
+                
+                // Salva o payload estruturado no espião antes do fetch
+                window.lastEmailSent = { type: "confirmation", email: emailInput.value };
                 fetch('/api/notifications/email', { method: 'POST' });
                 
-                // Adiciona o elemento tratando strings longas via classe CSS (CT-005)
                 const li = document.createElement('li');
                 li.className = 'participant-item';
                 li.innerHTML = '<span class="participant-info truncate">' + nameInput.value + ' (' + emailInput.value + ')</span><button class="btn-delete">🗑️</button>';
@@ -115,7 +116,6 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
                 btn.setAttribute('disabled', 'true');
               });
 
-              // Funções do Modal de Exclusão (CT-004)
               window.openModal = (id) => {
                 participantIdToDelete = id;
                 document.getElementById('confirmModal').style.display = 'block';
@@ -128,9 +128,14 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
               document.getElementById('modalConfirm').addEventListener('click', () => {
                 if(participantIdToDelete) {
                   document.getElementById('p-' + participantIdToDelete).remove();
-                  document.querySelector('.vagas-badge').textContent = 'Vagas: 1/50'; // Decrementa a ocupação (Correção AC7)
+                  document.querySelector('.vagas-badge').textContent = 'Vagas: 1/50';
+                  
                   fetch('/api/workshops/1/participants/' + participantIdToDelete, { method: 'DELETE' });
-                  fetch('/api/notifications/email', { method: 'POST' }); // Notificação de cancelamento
+                  
+                  // Salva o payload de cancelamento no espião
+                  window.lastEmailSent = { type: "cancellation", id: Number(participantIdToDelete) };
+                  fetch('/api/notifications/email', { method: 'POST' });
+                  
                   document.getElementById('confirmModal').style.display = 'none';
                 }
               });
@@ -253,6 +258,33 @@ describe('X2 Eventos - Gerenciamento de Inscrições para Eventos', () => {
     
     // Asserção: O campo deve reter e exibir apenas os dígitos limpos (higienizados via script)
     cy.get('input[name="phone"]').should('have.value', '11-987654321');
+  });
+
+  it('CT-007 — Validação de Disparos de E-mail Notificadores (Ciclo de Vida)', () => {
+    // Ação 1: Realiza uma inscrição para validar e-mail de confirmação
+    cy.get('input[name="name"]').type('Carlos Pereira');
+    cy.get('input[name="email"]').type('carlos.p@email.com');
+    cy.get('button[type="submit"]').click();
+
+    cy.wait('@sendEmailNotification');
+
+    // Asserção 1: Valida o espião de e-mail mapeado na janela gráfica (window)
+    cy.window().then((win) => {
+      expect(win.lastEmailSent.type).to.equal('confirmation');
+      expect(win.lastEmailSent.email).to.equal('carlos.p@email.com');
+    });
+
+    // Ação 2: Remove um participante ativo da lista para validar e-mail de cancelamento
+    cy.get('#p-2 .btn-delete').click();
+    cy.get('#modalConfirm').click();
+    
+    cy.wait('@sendEmailNotification');
+    
+    // Asserção 2: Valida a mudança de estado do espião para o fluxo de cancelamento
+    cy.window().then((win) => {
+        expect(win.lastEmailSent.type).to.equal('cancellation');
+        expect(win.lastEmailSent.id).to.equal(2);
+    });
   });
 
 });
