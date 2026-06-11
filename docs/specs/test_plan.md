@@ -7,12 +7,14 @@ A X2 Eventos migrará seu gerenciamento manual de workshops para um sistema inte
 ### 2. Escopo do Teste (Features Ofertadas)
 *   **Em Escopo (A automatizar nesta suíte com Cypress):**
     *   Validação estrutural do formulário de inscrição (campos obrigatórios e opcionais).
-    *   Regras de negócio de validação de inputs (Regex para E-mail e Nome Completo).
+    *   Regras de negócio de validação de inputs (Regex para E-mail e tratamento de máscaras de telefone para 10 e 11 dígitos).
     *   Controle rígido do limite máximo de vagas (bloqueio e mensagem de esgotado).
     *   Ciclo de sucesso: persistência, limpeza de campos e reatividade da lista.
-    *   Fluxo de remoção de participantes e reajuste dinâmico do saldo de vagas.
+    *   Fluxo de remoção de participantes e reajuste dinâmico do saldo de vagas (correção lógica do AC7).
+    *   **Testes de Regressão Visual e Layout:** Validação de alinhamento dos botões de exclusão e comportamento da interface com strings extensas (*text truncation*).
+    *   **Testes de Responsividade:** Validação do comportamento do layout em resoluções mobile e tablets.
 *   **Fora do Escopo:**
-    *   Serviço de envio físico de e-mails (SMTP real - será validado via interceptação ou mock).
+    *   Serviço de envio físico de e-mails (SMTP real - será validado via interceptação de chamadas de API ou mocks na camada de transporte).
 
 ### 3. Matriz de Análise de Risco Técnico (Foco de Negócio)
 
@@ -20,8 +22,14 @@ A X2 Eventos migrará seu gerenciamento manual de workshops para um sistema inte
 | :--- | :--- | :---: | :---: | :--- |
 | **R-01** | *Overbooking* (Inscrições duplicadas em milissegundos excedendo o limite de 50 vagas). | Alto | Alta | Testes de estresse/concorrência simulados via automação para avaliar comportamento do estado da aplicação. |
 | **R-02** | Injeção de caracteres inválidos ou scripts maliciosos no campo Nome Completo. | Médio | Média | Testes negativos utilizando tabelas de decisão com payloads numéricos e caracteres especiais. |
-| **R-03** | Dessincronização do saldo de vagas visível na tela após remoções sequenciais de participantes. | Alto | Média | Automação de exclusões e asserção matemática da string de contador (`Vagas: X/50`). |
+| **R-03** | Dessincronização do saldo de vagas visível na tela após remoções sequenciais de participantes. | Alto | Média | Automação de exclusões e asserção matemática da string de contador (`Vagas: X/50`), validando a semântica visual do componente. |
+| **R-04** | **Erros de Operação Manual (UX/Acessibilidade):** Exclusão acidental de participantes por falta de barreira de confirmação ou baixa legibilidade do Modo Escuro sob luz solar direta. | Médio | Alta | Execução de testes heurísticos de usabilidade baseados em ambiente real (operações em portaria) e proposição de melhorias de interface. |
 
 ### 4. Critérios de Aceite e Conclusão (Quality Gates)
-*   **Critério de Entrada:** Interface web da aplicação X2 Eventos disponível e acessível em ambiente local ou de staging.
-*   **Critério de Saída (Sucesso):** 100% dos testes ponta a ponta (E2E) passando com zero regressões. Bloqueio estrito de requisições de inscrição quando o contador atingir o teto limite.
+*   **Critério de Entrada:** 
+    *   Interface web da aplicação X2 Eventos disponível e acessível em ambiente local ou de staging.
+    *   Alinhamento prévio com o time de Produto/Desenvolvimento sobre as incoerências de Regras de Negócio levantadas na análise estática (AC7 e ambiguidade do contador visual).
+*   **Critério de Saída (Sucesso):** 
+    *   100% dos testes ponta a ponta (E2E) e de regressão visual passando com zero falhas impeditivas.
+    *   Bloqueio estrito de requisições de inscrição quando o contador atingir o teto limite.
+    *   Resolução ou congelamento formal (via débitos técnicos aceitos) das incoerências de layout e comportamento apontadas.
